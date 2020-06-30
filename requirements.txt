@@ -1,0 +1,6 @@
+Flask==1.1.2
+google-cloud-datastore==1.12.0
+python-jose
+flask-cors
+six
+requests_oauthlib
