@@ -1,2 +1,2 @@
 users = "users"
-GAMES = "games"
+games = "games"

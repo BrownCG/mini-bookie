@@ -19,7 +19,7 @@ def games_get_post():
             return("need home team", 400)
         if 'away' not in content.keys():
             return("need away team", 400)
-        if 'odds' not in content.keys() or len(content['odds']) != 2:
+        if 'odds' not in content.keys() or type(content['odds']) != list or ((content['odds'][0] + content['odds'][1]) != 1):
             return("please give home then away odds as decimal in a list", 400)
         if 'maxLoss' not in content.keys() or content['maxLoss'] < 100:
             return("Need to know the potential loss for the game", 400)
@@ -37,7 +37,7 @@ def games_get_post():
           'homeLiability': 0, 'awayLiability': 0, 'completed': False, 
           'description': content['description'], 'owner': payload})
         client.put(new_game)
-        return str(new_game.key.id)
+        return (str(new_game.key.id), 201)
     elif request.method == 'GET':
         query = client.query(kind=constants.games)
         q_limit = int(request.args.get('limit', '5'))
@@ -84,13 +84,13 @@ def games_put_delete_get(id):
         if game is None:
             return('Invalid game ID', 400)
         else:
-            output = []
-            for x in game['loads']:
-                load_key = client.key(constants.loads, int(x))
-                load = client.get(key=load_key)
-                load['self'] = request.host_url + '/loads/' + str(x)
-                output.append(load)
-            game['loads'] = output
+            # output = []
+            # for x in game['loads']:
+            #     load_key = client.key(constants.loads, int(x))
+            #     load = client.get(key=load_key)
+            #     load['self'] = request.host_url + '/loads/' + str(x)
+            #     output.append(load)
+            # game['loads'] = output
             return (game, 200)
     else:
         return 'Method not recogonized'

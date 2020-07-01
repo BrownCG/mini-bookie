@@ -6,8 +6,6 @@ import constants
 import cloud_keys
 import verificationHelper
 import game
-import boat
-import load
 from google.oauth2 import id_token
 from google.auth import crypt
 from google.auth import jwt
@@ -29,7 +27,7 @@ client_secret = cloud_keys.client_secret
 
 # This is the page that you will use to decode and collect the info from
 # the Google authentication flow
-redirect_uri = 'https://mini-bookie.wl.r.appspot.com/oauth'
+redirect_uri = 'https://minibookie.wn.r.appspot.com/oauth'
 
 # These let us get basic info to identify a user and not much else
 # they are part of the Google People API
