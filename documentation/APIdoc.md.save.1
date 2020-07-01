@@ -1,0 +1,138 @@
+Mini-Bookie
+Chris Brown
+Last Updated: 6/8/2020
+
+Introduction
+For my school portfolio project, I wanted to create the backend for a basic sports-betting software demonstrating the basics of how bookmakers’ set head to head odds. It demonstrates the basics of how odds get adjusted in real time according to the flow of money into a sportsbook. I wanted to create such an application to have an interactive tool for teaching the workings of sportsbooks to new bettors, as well as allowing a tool for easily testing “paper-trading” strategies or fantasy sports-style competition between friends.
+
+URL: https://mini-bookie.wn.r.appspot.com/
+
+Models & Routes
+
+USER
+
+Name
+Type
+Description
+Required?
+name
+String
+The sub value of the token
+Yes
+email
+String
+The email of the user registered
+Yes
+balance
+double
+The profit/loss of the book’s settled matches
+Yes
+
+
+
+
+
+
+
+
+
+
+
+GAME
+
+Name
+Type
+Description
+Required?
+home
+String
+HomeTeam
+Yes
+away
+String
+AwayTeam
+Yes
+description
+String
+A brief description of the game
+No
+owner
+String
+The bookie for the game
+Yes
+totalPool
+Double
+Money collected from bettors
+Yes
+homeLiability
+Double
+Total payout if home wins
+Yes
+awayLiability
+Double
+Total payout if away wins
+Yes
+maxLoss
+Double
+Bookie-defined maximum loss on the game/point
+Yes
+homeOdds
+Double
+The current odds being offered on the home team
+Yes
+awayOdds
+Double
+The current odds being offered on the away team
+Yes
+wagers
+List
+A list of all related wagers to this game
+Yes
+completed
+Bool
+Designates if the game is complete or not
+Yes
+
+
+
+
+
+
+
+
+
+
+
+WAGERS
+
+
+Name
+Type
+Description
+Required?
+game
+String
+id of game being bet on
+Yes
+bookie
+String
+“name” value of the User
+Yes
+betSize
+Double
+Size of the bet
+Yes
+betWin
+Double
+Payout should bet win
+Yes
+betTeam
+String
+“home” or “away”
+Yes
+completed
+Bool
+If the bet has been settled (automatic for loss, manual by bookie for win)
+Yes
+
+

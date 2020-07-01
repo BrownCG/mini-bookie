@@ -1,0 +1,123 @@
+{
+	"info": {
+		"_postman_id": "93787302-1628-48f6-a5de-1a8d8f440568",
+		"name": "miniBookie",
+		"description": "Test suite for example odds-making software",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "CreateGame",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c6675cba-5c7e-4a72-b81d-bba2984c7486",
+						"exec": [
+							"var game = JSON.parse(responseBody);",
+							"",
+							"",
+							"pm.test(\"Status code is 201\", function () { ",
+							"    pm.response.to.have.status(201); ",
+							"});",
+							"",
+							"pm.environment.set(\"testGameID\", game.gameID);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"home\": \"HomeTown Heroes\",\n\t\"away\": \"Jamestown Jerks\",\n\t\"odds\": [0.6, 0.4],\n\t\"maxLoss\": 5000,\n\t\"description\": \"A base game to place bets against to familiarize process\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{app_url}}/games",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"games"
+					]
+				},
+				"description": "Create a test game"
+			},
+			"response": []
+		},
+		{
+			"name": "GetTestGame",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{app_url}}/games/{{testGameID}}",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"games",
+						"{{testGameID}}"
+					]
+				},
+				"description": "Check the newly created test game"
+			},
+			"response": []
+		},
+		{
+			"name": "GetAllGames",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{app_url}}/games",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"games"
+					]
+				},
+				"description": "List the first page of games"
+			},
+			"response": []
+		},
+		{
+			"name": "DeleteTestGame",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{app_url}}/games/{{testGameID}}",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"games",
+						"{{testGameID}}"
+					]
+				},
+				"description": "Remove the temporary game from datastore"
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}
