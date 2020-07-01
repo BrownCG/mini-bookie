@@ -37,7 +37,8 @@ def games_get_post():
           'homeLiability': 0, 'awayLiability': 0, 'completed': False, 
           'description': content['description'], 'owner': payload})
         client.put(new_game)
-        return (str(new_game.key.id), 201)
+        gameInfo = {"gameID": str(new_game.key.id), "self": request.host_url + 'games/' + str(new_game.key.id)}
+        return (gameInfo, 201)
     elif request.method == 'GET':
         query = client.query(kind=constants.games)
         q_limit = int(request.args.get('limit', '5'))
@@ -66,23 +67,23 @@ def games_put_delete_get(id):
         game_key = client.key(constants.games, int(id))
         game = client.get(key=game_key)
         if game is None:
-            return('Invalid game ID', 400)
-        elif len(game['loads']) == 0:
+            return('Invalid game ID', 404)
+        elif len(game['wagers']) == 0:
             client.delete(game_key)
-            return ('', 200)
+            return ('', 204)
         else:
-            for x in game['loads']:
-                load_key = client.key(constants.loads, int(x))
-                load = client.get(key=load_key)
-                load.update({'owner': load['owner'], 'game': '', 'weight': load['weight'], 'contents': load['contents']})
-                client.put(load)
+            # for x in game['wagers']:
+            #     load_key = client.key(constants.loads, int(x))
+            #     load = client.get(key=load_key)
+            #     load.update({'owner': load['owner'], 'game': '', 'weight': load['weight'], 'contents': load['contents']})
+            #     client.put(load)
             client.delete(game_key)
-            return ('', 200)
+            return ('', 204)
     elif request.method == 'GET':
         game_key = client.key(constants.games, int(id))
         game = client.get(key=game_key)
         if game is None:
-            return('Invalid game ID', 400)
+            return('Invalid game ID', 404)
         else:
             # output = []
             # for x in game['loads']:
