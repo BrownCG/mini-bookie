@@ -16,4 +16,4 @@ def verify_jwt(request):
         token, req, cloud_keys.client_id)
         return id_info['sub']
     except:
-        return ''
+        return 0
