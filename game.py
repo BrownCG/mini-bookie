@@ -75,9 +75,9 @@ def games_get_post():
     else:
         return ({"Error": "Method not recogonized"}, 405)
 
-#get or delete (i.e. cancel and refund) a specific game
-@bp.route('/<id>', methods=['DELETE', 'GET'])
-def games_put_delete_get(id):
+#from the individual game route, can read, "cancel", declare winner, or place wager
+@bp.route('/<id>', methods=['DELETE', 'GET', 'POST', 'PUT'])
+def games_post_put_delete_get(id):
     if request.method == 'DELETE':
         #authenticate user
         payload = verificationHelper.verify_jwt(request)
@@ -114,5 +114,47 @@ def games_put_delete_get(id):
             #     output.append(load)
             # game['loads'] = output
             return (game, 200)
+    elif request.method == 'POST':
+        #authenticate user to place bet
+        payload = verificationHelper.verify_jwt(request)
+        if payload == 0:
+            return ({"Error": "INVALID JWT"}, 401)
+        content = request.get_json()
+        #validate input
+        if 'betSize' not in content.keys() or content['betSize'] < 1:
+            return("must bet at least one unit", 400)
+        if 'betTeam' not in content.keys():
+            return("need a team to bet on", 400)
+        game_key = client.key(constants.games, int(id))
+        game = client.get(key=game_key)
+        if game is None:
+            return({"Error": "Invalid game ID"}, 404)
+        oddMulti = 0
+        curLiability = 0
+        betTeam = ''
+        if content['betTeam'] == 'HOME':
+            oddMulti = game['homeOdds']
+            curLiability = game['homeLiability']
+            betTeam = game['home']
+        if content['betTeam'] == 'AWAY':
+            oddMulti = game['awayOdds']
+            curLiability = game['awayLiability']
+            betTeam = game['away']
+        propLiability = content['betSize'] * oddMulti
+        maxBet = (game['totalPool'] + game['maxLoss'] - curLiability) / 2
+        if propLiability > maxBet:
+            return ({"Error": "The bet you placed was too large for the current pool"}, 400) 
+        #reset the odds here
+        #
+        #create and populate new entity
+        new_wager = datastore.entity.Entity(key=client.key(constants.wagers))
+        new_wager.update({'betTeam': betTeam, 'betWin': propLiability,
+          'betSize': content['betSize'], 'game': str(id), 
+          'status': 'OPEN', 'bookie': game['owner'], 'owner': payload})
+        client.put(new_wager)
+        wagerInfo = {"wagerID": str(new_wager.key.id), "self": request.host_url + 'wagers/' + str(new_wager.key.id)}
+        #update the game odds, pools, and wager list
+        #
+        return (wagerInfo, 201)
     else:
         return ({"Error": "Method not recogonized"}, 405)

@@ -8,17 +8,15 @@ client = datastore.Client()
 
 bp = Blueprint('wager', __name__, url_prefix='/wagers')
 
-#Get all the wagers placed from this profile
+#Get all the open wagers placed from this profile
 @bp.route('/', methods=['GET'])
-def wagers_get():
+def wagers_get_all():
     if request.method == 'GET':
          #authenticate user
         payload = verificationHelper.verify_jwt(request)
         if payload == 0:
             return ({"Error": "INVALID JWT"}, 401)
         query = client.query(kind=constants.wagers)
-        if 'all' not in content.keys():
-            query.add_filter('status', '=', 'OPEN')
         query.add_filter('owner', '=', 'OPEN')
         q_limit = int(request.args.get('limit', '10'))
         q_offset = int(request.args.get('offset', '0'))
@@ -48,7 +46,7 @@ def wagers_get():
 
 #Inspect an individiual wager
 @bp.route('/<id>', methods=['GET'])
-def wagers_put_get(id):
+def wager_get(id):
     if request.method == 'GET':
         #authenticate user
         payload = verificationHelper.verify_jwt(request)
@@ -59,7 +57,7 @@ def wagers_put_get(id):
         if wager is None:
             return({"Error": "Invalid wager ID"}, 404)
         elif payload != wager['owner']:                          #authorize user
-            return({"Error": "Not your wager to delete"}, 403)
+            return({"Error": "Not your wager"}, 403)
         else:
             # output = []
             # for x in wager['loads']:

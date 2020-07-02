@@ -6,6 +6,7 @@ import constants
 import cloud_keys
 import verificationHelper
 import game
+import wager
 from google.oauth2 import id_token
 from google.auth import crypt
 from google.auth import jwt
@@ -17,6 +18,7 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 app = Flask(__name__)
 app.register_blueprint(game.bp)
+app.register_blueprint(wager.bp)
 client = datastore.Client()
 
 
