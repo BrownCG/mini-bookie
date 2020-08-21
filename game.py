@@ -147,33 +147,39 @@ def games_post_put_delete_get(id):
             oddMulti = game['awayOdds']
             curLiability = game['awayLiability']
             betTeam = game['away']
-        propLiability = content['betSize'] * oddMulti
+        propLiability = round((content['betSize'] * oddMulti), 2)
         # do not allow a single bet to eat up too much of the books risk 
-        if propLiability > ((game['totalPool'] + game['maxLoss'] - curLiability) / 2):
+        if propLiability > ((game['totalPool'] + game['maxLoss'] - curLiability) / 4):
             return ({"Error": "The bet you placed was too large for the current pool"}, 400) 
         # update the odds for future bets
-        prevHomeOdds = (1 / game['homeOdds']) * (1 / (1 - game['vig']))
-        prevAwayOdds = (1 / game['awayOdds']) * (1 / (1 - game['vig']))
+        prevHomeOdds = (1 / game['homeOdds']) * (1 - game['vig'])
+        prevAwayOdds = (1 / game['awayOdds']) * (1 - game['vig'])
         homePool = (game['totalPool'] + game['maxLoss']) * prevHomeOdds
         awayPool = (game['totalPool'] + game['maxLoss']) * prevAwayOdds
         if content['betTeam'] == 'HOME':
             game['homeLiability'] += propLiability
             homePool += propLiability
+            if game['homeOdds'] <= 1.05:
+                return ({"Error": "Action is not currently being taken on this side of the line"}, 400)
         if content['betTeam'] == 'AWAY':
             game['awayLiability'] += propLiability
             awayPool += propLiability
-        game['totalPool'] += propLiability
-        homePct = (homePool / (game['totalPool'] + game['maxLoss']))
-        awayPct = (awayPool / (game['totalPool'] + game['maxLoss']))
-        game['homeOdds'] = (1 / homePct) * (1 - game['vig'])
-        game['awayOdds'] = (1 / awayPct) * (1 - game['vig'])
+            if game['awayOdds'] <= 1.05:
+                return ({"Error": "Action is not currently being taken on this side of the line"}, 400)
+        game['totalPool'] += content['betSize']
+        homePct = (homePool / (homePool + awayPool))
+        awayPct = (awayPool / (homePool + awayPool))
+        game['homeOdds'] = round((1 / homePct) * (1 - game['vig']), 2)
+        game['awayOdds'] = round((1 / awayPct) * (1 - game['vig']), 2)
+        if game['homeOdds'] <= 1.05 or game['awayOdds'] <= 1.05:
+            return ({"Error": "Action is not currently being taken on this side of the line"})
         # create and populate new entity
         new_wager = datastore.entity.Entity(key=client.key(constants.wagers))
         new_wager.update({'betTeam': betTeam, 'betWin': propLiability,
           'betSize': content['betSize'], 'game': str(id), 
           'status': 'OPEN', 'bookie': game['owner'], 'owner': payload})
         client.put(new_wager)
-        wagerInfo = {"wagerID": str(new_wager.key.id), "self": request.host_url + 'wagers/' + str(new_wager.key.id), "addedLiability": propLiability}
+        wagerInfo = {"wagerID": str(new_wager.key.id), "self": request.host_url + 'wagers/' + str(new_wager.key.id), "homeChance": homePct, "awayChance": awayPct}
         # update the game odds, pools, and wager list
         game['wagers'].append(new_wager.key.id)
         client.put(game)
