@@ -8,16 +8,16 @@ client = datastore.Client()
 
 bp = Blueprint('game', __name__, url_prefix='/games')
 
-#create and read all routes from url/games
+# create and read all routes from url/games
 @bp.route('/', methods=['POST','GET'])
 def games_get_post():
     if request.method == 'POST':
-        #authenticate user and prepare to set as game owner
+        # authenticate user and prepare to set as game owner
         payload = verificationHelper.verify_jwt(request)
         if payload == 0:
             return ({"Error": "INVALID JWT"}, 401)
         content = request.get_json()
-        #validate input
+        # validate input
         if 'home' not in content.keys():
             return("need home team", 400)
         if 'away' not in content.keys():
@@ -28,15 +28,15 @@ def games_get_post():
             return("Need to know the potential loss for the game", 400)
         if 'description' not in content.keys():
             content['description'] = ''
-        if 'vig' not in content.keys() or content['vig'] < 0.05 or content['vig'] > 0.4:    #can change house cut if wanted, but defaults to industry standard 10pct
+        if 'vig' not in content.keys() or content['vig'] < 0.05 or content['vig'] > 0.4:    # can change house cut if wanted, but defaults to industry standard 10pct
             content['vig'] = 0.1
         decOdds = content['odds']
         if decOdds[0] == 0 or decOdds[1] == 0 or decOdds[0] + decOdds[1] != 1:
             return("The decimal odds must add up to 1 and cannot be 0", 400)
-        #set public facing odds
+        # set public facing odds
         homeOdds = (1 / decOdds[0]) * (1 - content['vig'])
         awayOdds = (1 / decOdds[1]) * (1 - content['vig'])
-        #create and populate new entity
+        # create and populate new entity
         new_game = datastore.entity.Entity(key=client.key(constants.games))
         new_game.update({'home': content['home'], 'away': content['away'],
           'homeOdds': homeOdds, 'awayOdds': awayOdds, 'totalPool': 0, 
@@ -75,11 +75,12 @@ def games_get_post():
     else:
         return ({"Error": "Method not recogonized"}, 405)
 
-#from the individual game route, can read, "cancel", declare winner, or place wager
+# from the individual game route, can read, "cancel", declare winner, or place wager
 @bp.route('/<id>', methods=['DELETE', 'GET', 'POST', 'PUT'])
 def games_post_put_delete_get(id):
+    # deleting acts as cancelling a game, refunding amount bet but keeping ticket record for receipt
     if request.method == 'DELETE':
-        #authenticate user
+        # authenticate user
         payload = verificationHelper.verify_jwt(request)
         if payload == 0:
             return ({"Error": "INVALID JWT"}, 401)
@@ -87,17 +88,23 @@ def games_post_put_delete_get(id):
         game = client.get(key=game_key)
         if game is None:
             return({"Error": "Invalid game ID"}, 404)
-        elif payload != game['owner']:                          #authorize user
+        elif payload != game['owner']:                          # authorize user
             return({"Error": "Not your game to delete"}, 403)
         elif len(game['wagers']) == 0:
             client.delete(game_key)
             return ('', 204)
         else:
-            # for x in game['wagers']:
-            #     load_key = client.key(constants.loads, int(x))
-            #     load = client.get(key=load_key)
-            #     load.update({'owner': load['owner'], 'game': '', 'weight': load['weight'], 'contents': load['contents']})
-            #     client.put(load)
+            for x in game['wagers']:
+                wager_key = client.key(constants.wagers, int(x))
+                wager = client.get(key=wager_key)
+                wager['status'] = 'REFUND'
+                client.put(wager)
+                query = client.query(kind=constants.users)
+                query.add_filter('name', '=', wager['owner'])
+                betPlacer = list(query.fetch())
+                refund = betPlacer[0]
+                refund['balance'] += wager['betSize']
+                client.put(refund)
             client.delete(game_key)
             return ('', 204)
     elif request.method == 'GET':
@@ -115,12 +122,12 @@ def games_post_put_delete_get(id):
             # game['loads'] = output
             return (game, 200)
     elif request.method == 'POST':
-        #authenticate user to place bet
+        # authenticate user to place bet
         payload = verificationHelper.verify_jwt(request)
         if payload == 0:
             return ({"Error": "INVALID JWT"}, 401)
         content = request.get_json()
-        #validate input
+        # validate input
         if 'betSize' not in content.keys() or content['betSize'] < 1:
             return("must bet at least one unit", 400)
         if 'betTeam' not in content.keys():
@@ -141,20 +148,44 @@ def games_post_put_delete_get(id):
             curLiability = game['awayLiability']
             betTeam = game['away']
         propLiability = content['betSize'] * oddMulti
-        maxBet = (game['totalPool'] + game['maxLoss'] - curLiability) / 2
-        if propLiability > maxBet:
+        # do not allow a single bet to eat up too much of the books risk 
+        if propLiability > ((game['totalPool'] + game['maxLoss'] - curLiability) / 2):
             return ({"Error": "The bet you placed was too large for the current pool"}, 400) 
-        #reset the odds here
-        #
-        #create and populate new entity
+        # update the odds for future bets
+        prevHomeOdds = (1 / game['homeOdds']) * (1 / (1 - game['vig']))
+        prevAwayOdds = (1 / game['awayOdds']) * (1 / (1 - game['vig']))
+        homePool = (game['totalPool'] + game['maxLoss']) * prevHomeOdds
+        awayPool = (game['totalPool'] + game['maxLoss']) * prevAwayOdds
+        if content['betTeam'] == 'HOME':
+            game['homeLiability'] += propLiability
+            homePool += propLiability
+        if content['betTeam'] == 'AWAY':
+            game['awayLiability'] += propLiability
+            awayPool += propLiability
+        game['totalPool'] += propLiability
+        homePct = (homePool / (game['totalPool'] + game['maxLoss']))
+        awayPct = (awayPool / (game['totalPool'] + game['maxLoss']))
+        game['homeOdds'] = (1 / homePct) * (1 - game['vig'])
+        game['awayOdds'] = (1 / awayPct) * (1 - game['vig'])
+        # create and populate new entity
         new_wager = datastore.entity.Entity(key=client.key(constants.wagers))
         new_wager.update({'betTeam': betTeam, 'betWin': propLiability,
           'betSize': content['betSize'], 'game': str(id), 
           'status': 'OPEN', 'bookie': game['owner'], 'owner': payload})
         client.put(new_wager)
-        wagerInfo = {"wagerID": str(new_wager.key.id), "self": request.host_url + 'wagers/' + str(new_wager.key.id)}
-        #update the game odds, pools, and wager list
-        #
+        wagerInfo = {"wagerID": str(new_wager.key.id), "self": request.host_url + 'wagers/' + str(new_wager.key.id), "addedLiability": propLiability}
+        # update the game odds, pools, and wager list
+        game['wagers'].append(new_wager.key.id)
+        client.put(game)
+        #update betPlacers balance
+        query = client.query(kind=constants.users)
+        query.add_filter('name', '=', payload)
+        betPlacer = list(query.fetch())
+        refund = betPlacer[0]
+        refund['balance'] -= content['betSize']
+        client.put(refund)
         return (wagerInfo, 201)
+    elif request.method == 'PUT':
+        return 200
     else:
         return ({"Error": "Method not recogonized"}, 405)

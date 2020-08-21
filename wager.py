@@ -56,16 +56,9 @@ def wager_get(id):
         wager = client.get(key=wager_key)
         if wager is None:
             return({"Error": "Invalid wager ID"}, 404)
-        elif payload != wager['owner']:                          #authorize user
+        elif payload != wager['owner'] or payload != wager['bookie']:                          #authorize user
             return({"Error": "Not your wager"}, 403)
         else:
-            # output = []
-            # for x in wager['loads']:
-            #     load_key = client.key(constants.loads, int(x))
-            #     load = client.get(key=load_key)
-            #     load['self'] = request.host_url + '/loads/' + str(x)
-            #     output.append(load)
-            # wager['loads'] = output
             return (wager, 200)
     else:
         return ({"Error": "Method not recogonized"}, 405)
