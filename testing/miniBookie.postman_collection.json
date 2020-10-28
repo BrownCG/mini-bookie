@@ -42,7 +42,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n\t\"home\": \"HomeTown Heroes\",\n\t\"away\": \"Jamestown Jerks\",\n\t\"odds\": [0.6, 0.4],\n\t\"maxLoss\": 5000,\n\t\"description\": \"A base game to place bets against to familiarize process\"\n}",
+					"raw": "{\n\t\"home\": \"Tinseltown Testers\",\n\t\"away\": \"Illinois Integrators\",\n\t\"odds\": [0.6, 0.4],\n\t\"maxLoss\": 5000,\n\t\"description\": \"A base game to place bets against to familiarize process\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -64,6 +64,31 @@
 		},
 		{
 			"name": "GetTestGame",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "1457aeb2-8da1-4e80-bc1b-996eefe55ed2",
+						"exec": [
+							"var game = JSON.parse(responseBody);",
+							"",
+							"",
+							"pm.test(\"Status code is 200\", function () { ",
+							"    pm.response.to.have.status(200); ",
+							"});",
+							"",
+							"pm.test(\"Home team is right\", function () { ",
+							"    pm.expect(game.home).to.equal(\"Tinseltown Testers\"); ",
+							"});",
+							"",
+							"pm.test(\"Nothing in the pool\", function () { ",
+							"    pm.expect(game.totalPool).to.equal(0); ",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
 			"request": {
 				"method": "GET",
 				"header": [],
@@ -100,8 +125,282 @@
 			"response": []
 		},
 		{
-			"name": "DeleteTestGame",
+			"name": "PostTestBet",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f996284d-d4af-4f34-82cd-73e19b11de7c",
+						"exec": [
+							"var bet = JSON.parse(responseBody);",
+							"",
+							"",
+							"pm.test(\"Status code is 201\", function () { ",
+							"    pm.response.to.have.status(201); ",
+							"});",
+							"",
+							"pm.environment.set(\"testBetID\", bet.wagerID);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"betSize\": 5,\n\t\"betTeam\": \"HOME\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{app_url}}/games/{{testGameID}}",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"games",
+						"{{testGameID}}"
+					]
+				},
+				"description": "Create a small test bet"
+			},
+			"response": []
+		},
+		{
+			"name": "GetTestBet",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{app_url}}/wagers/{{testBetID}}",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"wagers",
+						"{{testBetID}}"
+					]
+				},
+				"description": "Check if test bet is valid"
+			},
+			"response": []
+		},
+		{
+			"name": "CheckUserBalanceSubtracted",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "8f238c31-899b-40ac-af97-221d63d3e861",
+						"exec": [
+							"var users = JSON.parse(responseBody);",
+							"",
+							"",
+							"pm.test(\"Status code is 200\", function () { ",
+							"    pm.response.to.have.status(200); ",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{app_url}}/users",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"users"
+					]
+				},
+				"description": "Ensure a bet takes amount off users balance"
+			},
+			"response": []
+		},
+		{
+			"name": "RejectMassiveBet",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "6eff7d4c-9636-4b68-9372-a912ec91b140",
+						"exec": [
+							"pm.test(\"Status code is 400\", function () { ",
+							"    pm.response.to.have.status(400); ",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"betSize\": 3000,\n\t\"betTeam\": \"AWAY\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{app_url}}/games/{{testGameID}}",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"games",
+						"{{testGameID}}"
+					]
+				},
+				"description": "Make a bet too large for the current pool"
+			},
+			"response": []
+		},
+		{
+			"name": "PostLineMovingWager",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"betSize\": 500,\n\t\"betTeam\": \"AWAY\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{app_url}}/games/{{testGameID}}",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"games",
+						"{{testGameID}}"
+					]
+				},
+				"description": "Change the odds with a wager"
+			},
+			"response": []
+		},
+		{
+			"name": "GetAllBets",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{app_url}}/wagers",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"wagers"
+					]
+				},
+				"description": "Show all the owners bets"
+			},
+			"response": []
+		},
+		{
+			"name": "DeleteTestGame",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "2f062aac-4a3f-4722-b937-a981230520ea",
+						"exec": [
+							"pm.test(\"Status code is 204\", function () { ",
+							"    pm.response.to.have.status(204); ",
+							"});",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"url": {
@@ -115,6 +414,83 @@
 					]
 				},
 				"description": "Remove the temporary game from datastore"
+			},
+			"response": []
+		},
+		{
+			"name": "CheckBetCancelled",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "8d55fe83-7a55-40f5-897a-9363473dec6e",
+						"exec": [
+							"var wager = JSON.parse(responseBody);",
+							"",
+							"",
+							"pm.test(\"Status code is 200\", function () { ",
+							"    pm.response.to.have.status(200); ",
+							"});",
+							"",
+							"pm.test(\"Status of wager is REFUND\", function () { ",
+							"    pm.expect(wager.status).to.equal(\"REFUND\"); ",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{app_url}}/wagers/{{testBetID}}",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"wagers",
+						"{{testBetID}}"
+					]
+				},
+				"description": "Ensure Bet is refunded"
+			},
+			"response": []
+		},
+		{
+			"name": "CheckUserBalance",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{app_url}}/users",
+					"host": [
+						"{{app_url}}"
+					],
+					"path": [
+						"users"
+					]
+				}
 			},
 			"response": []
 		}
