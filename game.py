@@ -113,13 +113,6 @@ def games_post_put_delete_get(id):
         if game is None:
             return({"Error": "Invalid game ID"}, 404)
         else:
-            # output = []
-            # for x in game['loads']:
-            #     load_key = client.key(constants.loads, int(x))
-            #     load = client.get(key=load_key)
-            #     load['self'] = request.host_url + '/loads/' + str(x)
-            #     output.append(load)
-            # game['loads'] = output
             return (game, 200)
     elif request.method == 'POST':
         # authenticate user to place bet
@@ -192,6 +185,48 @@ def games_post_put_delete_get(id):
         client.put(refund)
         return (wagerInfo, 201)
     elif request.method == 'PUT':
-        return 200
+        # authenticate user
+        payload = verificationHelper.verify_jwt(request)
+        if payload == 0:
+            return ({"Error": "INVALID JWT"}, 401)
+        game_key = client.key(constants.games, int(id))
+        game = client.get(key=game_key)
+        if game is None:
+            return({"Error": "Invalid game ID"}, 404)
+        elif payload != game['owner']:                          # authorize user
+            return({"Error": "This is not your pool"}, 403)
+        content = request.get_json()
+        # validate input
+        if 'winner' not in content.keys():
+            return({"Error": "A winner must be declared"}, 400)
+        elif content['winner'] != game['homeTeam'] or content['winner'] != game['awayTeam']:
+            return({"Error": "A winner must be declared"}, 400)
+        elif len(game['wagers']) == 0:
+            client.delete(game_key)
+            return ('', 200)
+        else:
+            for x in game['wagers']:
+                wager_key = client.key(constants.wagers, int(x))
+                wager = client.get(key=wager_key)
+                if wager['betTeam'] == content['winner']:
+                    wager['status'] = 'WON'
+                    client.put(wager)
+                    query = client.query(kind=constants.users)
+                    query.add_filter('name', '=', wager['owner'])
+                    betPlacer = list(query.fetch())
+                    bettor = betPlacer[0]
+                    bettor['balance'] += wager['betWin']
+                    client.put(refund)
+                else:
+                    wager['status'] = 'LOST'
+                    client.put(wager)
+                    query = client.query(kind=constants.users)
+                    query.add_filter('name', '=', game['owner'])
+                    bookie = list(query.fetch())
+                    winnerBookie = bookie[0]
+                    winnerBookie['balance'] += wager['betSize']
+                    client.put(winnerBookie)
+            client.delete(game_key)
+            return ('', 200)
     else:
         return ({"Error": "Method not recogonized"}, 405)
